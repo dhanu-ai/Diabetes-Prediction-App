@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+import joblib
 from keras.models import load_model
 
 st.set_page_config(page_title="Diabetes Prediction App", page_icon="🧑‍⚕️", layout="wide")
@@ -9,52 +9,50 @@ st.set_page_config(page_title="Diabetes Prediction App", page_icon="🧑‍⚕�
 # Load the trained model
 try:
     model = load_model('diabetes_prediction_model_v1.h5')
-    print("Model loaded successfully!")
 except Exception as e:
-    st.error(f"Error loading the model: {e}")
+    st.error(f"❌ Error loading the model: {e}")
     st.stop()
 
-# Initialize the scaler WITHOUT loading a fitted one
-scaler = MinMaxScaler()
+# Load the fitted scaler
+try:
+    scaler = joblib.load("scaler_diabetes.pkl")
+except Exception as e:
+    st.error(f"❌ Error loading the scaler: {e}")
+    st.stop()
 
 def predict_diabetes(bmi, hba1c, glucose):
-    """Makes a prediction using the loaded model."""
+    """Makes a prediction using the loaded model and scaler."""
     input_data = pd.DataFrame({
         'bmi': [bmi],
         'hbA1c_level': [hba1c],
         'blood_glucose_level': [glucose]
     })
 
-    # **WARNING:** Fitting the scaler here on single input data is WRONG.
-    # This is only for demonstration and will likely lead to incorrect scaling.
-    # In a proper setup, you MUST load the scaler fitted on the training data.
-    scaler.fit(input_data)
+    # Scale the input using pre-fitted scaler
     scaled_input = scaler.transform(input_data)
 
-    # Reshape for LSTM (single sample, 1 timestep, 3 features)
-    reshaped_input = np.array(scaled_input).reshape((scaled_input.shape[0], 1, scaled_input.shape[1]))
+    # Reshape for LSTM: (samples, time_steps, features)
+    reshaped_input = np.array(scaled_input).reshape((1, 1, 3))
 
-    # Make the prediction
+    # Make prediction
     prediction = model.predict(reshaped_input)[0][0]
-
     return prediction
 
-st.title("Diabetes Prediction App")
-st.write("Enter your health metrics below to get a diabetes risk prediction.")
+# Streamlit UI
+st.title("🩺 Diabetes Prediction App")
+st.write("Enter your health metrics below to get a diabetes risk prediction:")
 
-bmi = st.number_input("BMI (Body Mass Index)", min_value=10.0, max_value=50.0, step=0.1)
-hba1c = st.number_input("HbA1c Level (%)", min_value=3.0, max_value=15.0, step=0.1)
-glucose = st.number_input("Blood Glucose Level (mg/dL)", min_value=50.0, max_value=300.0, step=1.0)
+bmi = st.number_input("BMI (Body Mass Index)", min_value=10.0, max_value=50.0, step=0.1, value=25.0)
+hba1c = st.number_input("HbA1c Level (%)", min_value=3.0, max_value=15.0, step=0.1, value=5.5)
+glucose = st.number_input("Blood Glucose Level (mg/dL)", min_value=50.0, max_value=300.0, step=1.0, value=100.0)
 
-if st.button("Predict"):
-    if model is not None:
-        # **SEVERE WARNING:** The scaling here is likely incorrect.
-        prediction_probability = predict_diabetes(bmi, hba1c, glucose)
-        st.subheader("Prediction:")
-        if prediction_probability >= 0.5:
-            st.warning(f"High risk of diabetes (Probability: {prediction_probability:.2f})")
-        else:
-            st.success(f"Low risk of diabetes (Probability: {prediction_probability:.2f})")
-        st.info("Note: This prediction is based on potentially incorrectly scaled input and should NOT be considered a medical diagnosis. Please consult a healthcare professional for accurate assessment.")
+if st.button("🔍 Predict"):
+    prediction = predict_diabetes(bmi, hba1c, glucose)
+    st.subheader("Prediction Result:")
+
+    if prediction >= 0.5:
+        st.warning(f"⚠️ High risk of diabetes.\nProbability: **{prediction:.2f}**")
     else:
-        st.error("Model not loaded. Please ensure 'diabetes_model.h5' is in the same directory.")
+        st.success(f"✅ Low risk of diabetes.\nProbability: **{prediction:.2f}**")
+
+    st.caption("🧠 Note: This model is an AI-based predictor and should not replace professional medical advice.")
