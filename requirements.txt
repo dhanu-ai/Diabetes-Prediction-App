@@ -1,2 +1,4 @@
-scikit-learn
 streamlit
+scikit-learn
+keras
+tensorflow  # if you're using TensorFlow-backed Keras
