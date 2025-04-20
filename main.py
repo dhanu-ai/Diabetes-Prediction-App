@@ -23,6 +23,7 @@ except Exception as e:
 def predict_diabetes(bmi, hba1c, glucose):
     """Makes a prediction using the loaded model and scaler."""
     input_data = pd.DataFrame({
+        'bmi': [bmi],
         'hbA1c_level': [hba1c],
         'blood_glucose_level': [glucose]
     })
@@ -41,11 +42,12 @@ def predict_diabetes(bmi, hba1c, glucose):
 st.title("🩺 Diabetes Prediction App")
 st.write("Enter your health metrics below to get a diabetes risk prediction:")
 
+bmi = st.number_input("BMI (Body Mass Index)", min_value=10.0, max_value=50.0, step=0.1, value=25.0)
 hba1c = st.number_input("HbA1c Level (%)", min_value=3.0, max_value=15.0, step=0.1, value=5.5)
 glucose = st.number_input("Blood Glucose Level (mg/dL)", min_value=50.0, max_value=300.0, step=1.0, value=100.0)
 
 if st.button("🔍 Predict"):
-    prediction = predict_diabetes(hba1c, glucose)
+    prediction = predict_diabetes(bmi, hba1c, glucose)
     st.subheader("Prediction Result:")
 
     if prediction >= 0.5:
